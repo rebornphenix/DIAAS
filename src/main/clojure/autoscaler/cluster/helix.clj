@@ -1,14 +1,20 @@
 (ns autoscaler.cluster.helix
-  (:import (org.apache.helix.model InstanceConfig IdealState$RebalanceMode)
-           (org.apache.helix HelixManagerFactory InstanceType)
-           (org.apache.helix.manager.zk ZKHelixAdmin HelixManagerShutdownHook)
-           (org.apache.curator.framework CuratorFramework)
+  (:import (org.apache.helix.model InstanceConfig)
            (java.util UUID)
-           (org.apache.helix.controller HelixControllerMain))
-  (:require [autoscaler.client.client])
-  (:use [autoscaler.cluster.model :as model]
+           (org.apache.curator.framework CuratorFramework)
+           (org.apache.helix.manager.zk HelixManagerShutdownHook ZKHelixAdmin ZkClient)
+           (org.apache.helix InstanceType HelixManagerFactory))
+
+  (:use [autoscaler.log]
         [autoscaler.keys]
-        [autoscaler.log]))
+        [autoscaler.cluster.model :as model]
+        [autoscaler.cluster.zkclientpool :as pool]))
+
+(defn ensureClusterNotExist [^ZkClient client ^String clusterName]
+  (let [path (str "/" clusterName)]
+    (if (.exists client path)
+      (.deleteRecursive client path)
+      )))
 
 (defn createInstanceConfig [^String host ^long port]
   (let [instance (InstanceConfig. (str host "_" (String/valueOf port)))]
@@ -18,35 +24,8 @@
       (.setInstanceEnabled true))
     instance))
 
-(defprotocol HelixAutoscalerManager
-  (init [this clusterName])
-  (addInstanceConfig [this clusterName instanceConfig])
-  (rebalance [this clusterName rebalanceReplica]))
-
-(defn ^HelixAutoscalerManager createHelixManager [^String connectString]
-  (let [admin (ZKHelixAdmin. connectString)
-        resourceName DEFAULT_HELIX_RESOURCE_NAME
-        stateModelRef DEFAULT_HELIX_STATE_MODEL_REF
-        partitions DEFAULT_HELIX_CLUSTER_PARTITION]
-    (reify
-      HelixAutoscalerManager
-      (init [_ clusterName]
-        (.addCluster admin clusterName)
-        (.addStateModelDef admin clusterName stateModelRef (model/defineStateModel stateModelRef))
-        (.addResource admin clusterName resourceName partitions stateModelRef (.toString IdealState$RebalanceMode/FULL_AUTO)))
-      (addInstanceConfig [_ clusterName instanceConfig]
-        (.addInstance admin clusterName instanceConfig))
-      (rebalance [_ clusterName rebalanceReplica]
-        (.rebalance admin clusterName resourceName rebalanceReplica)))))
-
-(def singleHelixManager (memoize createHelixManager))
-
 (defn ^String generateControllerName [^String clusterName]
   (str clusterName "-" (.toString (UUID/randomUUID))))
-
-(defn createHelixController ([^String connectString ^String clusterName] (createHelixController connectString clusterName (generateControllerName clusterName) (HelixControllerMain/STANDALONE)))
-  ([^String connectString ^String clusterName ^String controllerName ^String mode]
-   (HelixControllerMain/startHelixController connectString clusterName controllerName mode)))
 
 (defprotocol HelixAutoscalerAgent
   (start [this clusterName]))
@@ -54,11 +33,11 @@
 (defn- createHelixAutoscalerAgent [^CuratorFramework client ^String connectString ^String stateModelDef ^InstanceConfig instance ^String hostIp]
   (reify HelixAutoscalerAgent
     (start [_ clusterName]
-      (let [admin (ZKHelixAdmin. connectString)
+      (let [admin (ZKHelixAdmin. (pool/zkClient connectString))
             instanceName (.getId instance)
             manager (HelixManagerFactory/getZKHelixManager clusterName instanceName (InstanceType/PARTICIPANT) connectString)]
         (.addInstance admin clusterName instance)
-        (.registerStateModelFactory (.getStateMachineEngine manager) stateModelDef (createStateModelFactory client instanceName hostIp))
+        (.registerStateModelFactory (.getStateMachineEngine manager) stateModelDef (model/createStateModelFactory client instanceName hostIp))
         (.connect manager)
         (.addShutdownHook (Runtime/getRuntime) (HelixManagerShutdownHook. manager))
         (log-message (str instanceName " has been successfully started!"))))))
@@ -72,5 +51,3 @@
      agent)))
 
 (def singleHelixAgent (memoize createHelixAgent))
-
-

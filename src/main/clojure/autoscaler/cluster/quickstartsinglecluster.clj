@@ -1,6 +1,7 @@
-(ns autoscaler.cluster.quickstart
+(ns autoscaler.cluster.quickstartsinglecluster
   (:use [autoscaler.client.client]
         [autoscaler.cluster.helix]
+        [autoscaler.cluster.helixsinglecluster]
         [autoscaler.keys]
         [autoscaler.utils :as utils]
         [autoscaler.log]))

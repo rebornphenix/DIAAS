@@ -2,7 +2,7 @@
   (:gen-class)
   (:import (org.apache.curator.test TestingServer))
   (:use [autoscaler.log]
-        [autoscaler.cluster.quickstart]))
+        [autoscaler.cluster.quickstartsinglecluster]))
 
 (defn doAction [action args]
   (try
