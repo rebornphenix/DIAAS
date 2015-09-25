@@ -7,5 +7,5 @@
 (deftest try-quickstart-test
   (testing "Running quickstart"
     (let [connectString (.getConnectString (TestingServer. 2178))]
-      (quickStart connectString))
+      (quickStartMultiple connectString))
     (is (= 1 1))))

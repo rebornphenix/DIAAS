@@ -7,7 +7,7 @@
         [autoscaler.log]))
 
 
-(defn quickStart [^String connectString]
+(defn quickStartMultiple [^String connectString]
   (createGrandCluster connectString)
   (createGrandController connectString (createInstanceConfig "localhost" 11000))
   (createGrandController connectString (createInstanceConfig "localhost" 11001))

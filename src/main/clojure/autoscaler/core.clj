@@ -2,7 +2,8 @@
   (:gen-class)
   (:import (org.apache.curator.test TestingServer))
   (:use [autoscaler.log]
-        [autoscaler.cluster.quickstartsinglecluster]))
+        [autoscaler.cluster.quickstartsinglecluster :as single]
+        [autoscaler.cluster.quickstartmultiplecluster :as multiple]))
 
 (defn doAction [action args]
   (try
@@ -10,10 +11,15 @@
     (catch IllegalArgumentException e (log-message "Please input the correct action (clusterManager|clusterAgent)")))
   )
 
-(defn quickStartTest [args]
+(defn quickStartSingleClusterTest [args]
   (let [connnectString (.getConnectString (TestingServer.))]
     (log-message )
-    (quickStart connnectString)))
+    (single/quickStartSingle connnectString)))
+
+(defn quickStartMultipelClusterTest [args]
+  (let [connnectString (.getConnectString (TestingServer.))]
+    (log-message )
+    (multiple/quickStartMultiple connnectString)))
 
 (defn -main
   "the entry point for whole application"

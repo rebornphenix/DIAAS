@@ -7,7 +7,7 @@
         [autoscaler.log]))
 
 
-(defn quickStart [^String connectString]
+(defn quickStartSingle [^String connectString]
   (let [client (createCuratorFramework connectString)
         manager (singleHelixManager connectString)
         clusterName DEFAULT_TEST_HELIX_CLUSTER_NAME]
