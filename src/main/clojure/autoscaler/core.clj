@@ -8,7 +8,7 @@
 (defn doAction [action args]
   (try
     ((resolve (symbol (str "autoscaler.core/" action))) args)
-    (catch IllegalArgumentException e (log-message "Please input the correct action (clusterManager|clusterAgent)")))
+    (catch IllegalArgumentException e (log-error e "Please input the correct action (clusterManager|clusterAgent)")))
   )
 
 (defn quickStartSingleClusterTest [args]
@@ -16,7 +16,7 @@
     (log-message )
     (single/quickStartSingle connnectString)))
 
-(defn quickStartMultipelClusterTest [args]
+(defn quickStartMultipleClusterTest [args]
   (let [connnectString (.getConnectString (TestingServer.))]
     (log-message )
     (multiple/quickStartMultiple connnectString)))
