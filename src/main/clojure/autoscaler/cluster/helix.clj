@@ -51,7 +51,7 @@
    (createHelixAgent client connectString clusterName hostIp DEFAULT_AGENT_PORT))
   ([^CuratorFramework client ^String connectString ^String clusterName ^String hostIp port]
    (let [agent (createHelixAutoscalerAgent client connectString DEFAULT_HELIX_STATE_MODEL_REF (createInstanceConfig hostIp port) hostIp)]
-     (.start agent clusterName)
+     (start agent clusterName)
      agent)))
 
 (def singleHelixAgent (memoize createHelixAgent))
