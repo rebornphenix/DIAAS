@@ -8,9 +8,10 @@
         [autoscaler.cluster.zkclientpool :as pool]
         [autoscaler.cluster.helix]
         [autoscaler.cluster.model :as model]
-        [autoscaler.utils :as utils]))
+        [autoscaler.utils :as utils]
+        [autoscaler.log]))
 
-(defn- addExistingModels[^ZKHelixAdmin admin ^String clusterName]
+(defn- addExistingModels [^ZKHelixAdmin admin ^String clusterName]
   (map #(.addStateModelDef admin clusterName (.getId (.getStateModelDefinition %)) (.getStateModelDefinition %)) (BuiltInStateModelDefinitions/values)))
 
 (defn createGrandCluster [^String connectString]
@@ -19,28 +20,32 @@
     (ensureClusterNotExist client DEFAULT_GRAND_CLUSTER_NAME)
     (.addCluster admin DEFAULT_GRAND_CLUSTER_NAME true)
     (addExistingModels admin DEFAULT_GRAND_CLUSTER_NAME))
-    )
+  )
 
-(defn createGrandController [^String connectString ^InstanceConfig instance]
+(defn- createGrandController [^String connectString ^InstanceConfig instance]
   (let [client (ZKHelixAdmin. (pool/zkClient connectString))
-        manager (ZKHelixManager. DEFAULT_GRAND_CLUSTER_NAME (.getId instance) (InstanceType/CONTROLLER_PARTICIPANT) connectString)]
+        instanceId (.getId instance)
+        manager (ZKHelixManager. DEFAULT_GRAND_CLUSTER_NAME instanceId (InstanceType/CONTROLLER_PARTICIPANT) connectString)]
     (.addInstance client DEFAULT_GRAND_CLUSTER_NAME instance)
     (.registerStateModelFactory (.getStateMachineEngine manager) DEFAULT_GRAND_CLUSTER_CONTROLLER_AGENT_MODEL (DistClusterControllerStateModelFactory. connectString))
     (.connect manager)
     (.addShutdownHook (Runtime/getRuntime) (proxy [Thread] []
-                                             (run[]
+                                             (run []
                                                (.disconnect manager))))
-    ))
+    (log-message (str "instance " instanceId " has been successfully started!"))))
 
+(defn- createGrandControllerWithOnlyHost [^String connectString ^String host]
+  (createGrandController connectString (createInstanceConfig host DEFAULT_CONTROLLER_PORT)))
+
+(def singleHelixController (memoize createGrandControllerWithOnlyHost))
 
 (defprotocol HelixAutoscalerManager
   (init [this clusterName])
   (rebalance [this clusterName rebalanceReplica]))
 
-(defn ^HelixAutoscalerManager createHelixManager [^String connectString]
+(defn- ^HelixAutoscalerManager createHelixManager [^String connectString ^String resourceName]
   (let [client (pool/zkClient connectString)
         admin (ZKHelixAdmin. client)
-        resourceName DEFAULT_HELIX_RESOURCE_NAME
         stateModelRef DEFAULT_HELIX_STATE_MODEL_REF
         partitions DEFAULT_HELIX_CLUSTER_PARTITION
         grandClusterName DEFAULT_GRAND_CLUSTER_NAME]
@@ -55,7 +60,9 @@
         (.addStateModelDef admin clusterName stateModelRef (model/defineStateModel stateModelRef))
         (.addResource admin clusterName resourceName partitions stateModelRef (.toString IdealState$RebalanceMode/FULL_AUTO)))
       (rebalance [_ clusterName rebalanceReplica]
-        (.rebalance admin clusterName resourceName rebalanceReplica)))))
+        (do
+          (.rebalance admin clusterName resourceName rebalanceReplica)
+          (setClusterIdealSize connectString clusterName rebalanceReplica))))))
 
 (def singleHelixManager (memoize createHelixManager))
 

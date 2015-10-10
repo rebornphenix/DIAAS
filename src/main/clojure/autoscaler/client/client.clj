@@ -11,7 +11,7 @@
   (if (not (= (.getState client) (CuratorFrameworkState/STARTED)))
     (.start client)))
 
-(defn ^CuratorFramework createCuratorFramework [^String connectString]
+(defn- ^CuratorFramework createCuratorFramework [^String connectString]
   (let [client (CuratorFrameworkFactory/newClient connectString (ExponentialBackoffRetry. 1000 3))]
     (do
       (ensureStarted client)
@@ -26,6 +26,7 @@
   (getChildren [this path])
   (setData [this path data])
   (getData [this path])
+  (getDataWithDefaultValue [this path defaultValue])
   )
 
 (extend-type CuratorFramework
@@ -66,12 +67,14 @@
       (catch Exception e
         (log-error e (str "fail to set the data " data " to the path of " path)))))
   (getData [this path]
+    (getDataWithDefaultValue this path ""))
+  (getDataWithDefaultValue [this path defaultValue]
     (try
       (ensureStarted this)
       (String. (.forPath (.getData this) path))
       (catch Exception e
         (log-error e (str "fail to get the data from the path " path))
-        "")))
+        defaultValue)))
   )
 
 

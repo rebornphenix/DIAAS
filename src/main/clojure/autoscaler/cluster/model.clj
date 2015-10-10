@@ -12,21 +12,17 @@
 
 (defprotocol MasterAgentStatus
   (setCurrentMasterIp [this clusterName masterIp])
-  (setMarkDown [this ip])
-  (setMarkHalfWay [this ip])
   (getCurrentMasterIp [this clusterName])
   (deleteMasterIp [this clusterName])
   )
-
-(defn- masterAgentStatus->markDown [^CuratorFramework client ^String ip ^String status]
-  (let [queue (singleSimpleQueue client (getHelixAgentDoneStatusKey ip))]
-    (soffer queue status)))
 
 (defn- masterAgentStatus->getCurrentMasterIp [^CuratorFramework client ^String clusterName]
   (try
     (let [masterIp (getData client (getCurrentMasterIpKey clusterName))]
       (if (.equals masterIp "")
-        (masterAgentStatus->getCurrentMasterIp client clusterName)
+        (do
+          (sleep 100)
+          (masterAgentStatus->getCurrentMasterIp client clusterName))
         masterIp))
     (catch Exception e
       (log-warn-error e (str "fail to get master ip for cluster " clusterName))
@@ -39,10 +35,6 @@
     MasterAgentStatus
     (setCurrentMasterIp [_ clusterName masterIp]
       (setData client (getCurrentMasterIpKey clusterName) masterIp))
-    (setMarkDown [_ ip]
-      (masterAgentStatus->markDown client ip DONE_STATUS_DONE))
-    (setMarkHalfWay [_ ip]
-      (masterAgentStatus->markDown client ip DONE_STATUS_FAILURE))
     (getCurrentMasterIp [_ clusterName]
       (masterAgentStatus->getCurrentMasterIp client clusterName))
     (deleteMasterIp [_ clusterName]
@@ -59,46 +51,46 @@
     (onBecomeMasterFromOffline [_ message context]
       (let [clusterName (.getClusterName (.getManager context))]
         (deleteMasterIp masterAgentStatus clusterName)
-        (utils/executeCmd "/usr/local/bin/helix_from_offline_to_master.sh" hostIp)
+        (utils/executeCmd "/usr/local/bin/helix_from_offline_to_master.sh" hostIp resourceName)
         (setCurrentMasterIp masterAgentStatus clusterName hostIp)
         (utils/sleep transDelay)
-        (setMarkDown masterAgentStatus hostIp)
         (printTransitionMessage resourceName partitionName instanceName message)
         ))
     (onBecomeSlaveFromOffline [_ message context]
       (let [clusterName (.getClusterName (.getManager context))
-            masterIp (.getCurrentMasterIp masterAgentStatus clusterName)]
-        (utils/executeCmd "/usr/local/bin/helix_from_offline_to_slave.sh" masterIp hostIp)
+            masterIp (getCurrentMasterIp masterAgentStatus clusterName)]
+        (utils/executeCmd "/usr/local/bin/helix_from_offline_to_slave.sh" masterIp hostIp resourceName)
         (utils/sleep transDelay)
-        (setMarkDown masterAgentStatus hostIp)
         (printTransitionMessage resourceName partitionName instanceName message)
         ))
     (onBecomeMasterFromSlave [_ message context]
       (let [clusterName (.getClusterName (.getManager context))]
-        (utils/executeCmd "/usr/local/bin/helix_from_slave_to_master.sh" hostIp)
+        (utils/executeCmd "/usr/local/bin/helix_from_slave_to_master.sh" hostIp resourceName)
         (utils/sleep transDelay)
         (setCurrentMasterIp masterAgentStatus clusterName hostIp)
         (printTransitionMessage resourceName partitionName instanceName message)
         ))
     (onBecomeSlaveFromMaster [_ message _]
-      (utils/executeCmd "/usr/local/bin/helix_from_master_to_slave.sh" hostIp)
+      (utils/executeCmd "/usr/local/bin/helix_from_master_to_slave.sh" hostIp resourceName)
       (utils/sleep transDelay)
       (printTransitionMessage resourceName partitionName instanceName message)
       )
     (onBecomeOfflineFromMaster [_ message context]
       (let [clusterName (.getClusterName (.getManager context))]
-        (utils/executeCmd "/usr/local/bin/helix_from_master_to_offline.sh" hostIp)
+        (deleteMasterIp masterAgentStatus clusterName)
+        (utils/executeCmd "/usr/local/bin/helix_from_master_to_offline.sh" hostIp resourceName)
         (utils/sleep transDelay)
         (printTransitionMessage resourceName partitionName instanceName message)
         ))
     (onBecomeOfflineFromSlave [_ message context]
       (let [clusterName (.getClusterName (.getManager context))
-            masterIp (.getCurrentMasterIp masterAgentStatus clusterName)]
-        (utils/executeCmd "/usr/local/bin/helix_from_slave_to_offline.sh" masterIp hostIp)
+            masterIp (getCurrentMasterIp masterAgentStatus clusterName)]
+        (utils/executeCmd "/usr/local/bin/helix_from_slave_to_offline.sh" masterIp hostIp resourceName)
         (utils/sleep transDelay)
         (printTransitionMessage resourceName partitionName instanceName message)
         ))
     (onBecomeDroppedFromOffline [_ message _]
+      (utils/executeCmd "/usr/local/bin/helix_from_offline_to_dropped.sh" hostIp resourceName)
       (utils/sleep transDelay)
       (printTransitionMessage resourceName partitionName instanceName message))
     ))

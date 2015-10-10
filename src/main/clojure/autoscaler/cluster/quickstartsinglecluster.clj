@@ -8,12 +8,11 @@
 
 
 (defn quickStartSingle [^String connectString]
-  (let [client (createCuratorFramework connectString)
+  (let [client (singleCuratorFramework connectString)
         manager (singleHelixManager connectString)
         clusterName DEFAULT_TEST_HELIX_CLUSTER_NAME]
     (init manager clusterName)
-    (doto manager
-      (rebalance clusterName 4))
+    (rebalance manager clusterName 4)
     (singleHelixAgent client connectString clusterName "localhost" 12000)
     (createHelixController connectString clusterName)
     (utils/sleep 1000)

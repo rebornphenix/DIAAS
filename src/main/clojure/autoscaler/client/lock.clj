@@ -11,7 +11,7 @@
 (defprotocol RunInLock
   (run [this command]))
 
-(defn ^RunInLock createLock [^CuratorFramework client ^String path]
+(defn- ^RunInLock createLock [^CuratorFramework client ^String path]
   (let [lock (InterProcessMutex. client path)]
     (reify RunInLock
       (run [this command]

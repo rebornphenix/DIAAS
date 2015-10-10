@@ -9,13 +9,14 @@
 
 (defn quickStartMultiple [^String connectString]
   (createGrandCluster connectString)
-  (createGrandController connectString (createInstanceConfig "192.168.1.110" 11000))
-  (createGrandController connectString (createInstanceConfig "192.168.1.111" 11000))
-  (createGrandController connectString (createInstanceConfig "192.168.1.112" 11000))
-  (let [client (createCuratorFramework connectString)
-        manager (singleHelixManager connectString)
+  (singleHelixController connectString "192.168.1.110")
+  (singleHelixController connectString "192.168.1.111")
+  (singleHelixController connectString "192.168.1.112")
+  (let [client (singleCuratorFramework connectString)
+        manager (singleHelixManager connectString DEFAULT_HELIX_RESOURCE_NAME)
         clusterName DEFAULT_TEST_HELIX_CLUSTER_NAME]
     (init manager clusterName)
+    (singleHelixAdministrator connectString clusterName "192.168.1.130")
     (doto manager
       (rebalance clusterName 4))
     (singleHelixAgent client connectString clusterName "192.168.1.120")

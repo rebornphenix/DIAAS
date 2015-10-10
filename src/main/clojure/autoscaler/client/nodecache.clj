@@ -21,8 +21,12 @@
           (dosync (alter nodeCacheListenerWrapper conj currentData))
           (log-debug (str "receive the data " currentData " for path " path))))
       NodeCacheListenerDataRetriever
-      (getData [_]
+      (getData [this]
         (let [ret (first (deref nodeCacheListenerWrapper))]
+          (if (nil? ret)
+            (do
+              (sleep 100)
+              (getData this)))
           (dosync (alter nodeCacheListenerWrapper empty))
           ret)))))
 
@@ -30,7 +34,7 @@
   (if (nil? (.forPath (.checkExists client) path))
     (do (.forPath (.creatingParentsIfNeeded (.create client)) path (.getBytes defaultValue)))))
 
-(defn ^NodeCache createNodeCache [^CuratorFramework client ^String path ^String defaultValue]
+(defn- ^NodeCache createNodeCache [^CuratorFramework client ^String path ^String defaultValue]
   (let [cache (org.apache.curator.framework.recipes.cache.NodeCache. client path)
         listener (createNodeCacheListener cache path)]
     (.addListener (.getListenable cache) listener)
