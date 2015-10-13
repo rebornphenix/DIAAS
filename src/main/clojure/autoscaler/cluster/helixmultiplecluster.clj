@@ -62,12 +62,13 @@
         (.addResource admin clusterName resourceName partitions stateModelRef))
       (rebalance [_ clusterName rebalanceReplica]
         (do
-          (let [currentSize (getClusterCurrentSize connectString clusterName)]
-            (if (< rebalanceReplica currentSize)
-              (do
-                (.rebalance admin clusterName resourceName rebalanceReplica)
-                (sleep 10000)))
-            (setClusterIdealSize connectString clusterName rebalanceReplica)))))))
+          (if (not (isClusterInBootProcess connectString clusterName))
+            (let [currentSize (getClusterCurrentSize connectString clusterName)]
+              (if (< rebalanceReplica currentSize)
+                (do
+                  (.rebalance admin clusterName resourceName rebalanceReplica)
+                  (sleep 10000)))
+              (setClusterIdealSize connectString clusterName rebalanceReplica))))))))
 
 (def singleHelixManager (memoize createHelixManager))
 

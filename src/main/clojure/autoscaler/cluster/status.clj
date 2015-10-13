@@ -61,6 +61,9 @@
 (defn- stringToLong [value]
   (if (.equals value "") 0 (Long/valueOf value)))
 
+(defn- stringToBoolean [value]
+  (if (.equals value "") false (Boolean/valueOf value)))
+
 (defn setClusterIdealSize [^String connectString ^String clusterName ^long size]
   (setClusterStatus connectString clusterName (String/valueOf size) getClusterStatusLockKey getClusterIdealSizeKey
                     #(log-message (str "set the ideal size of the cluster " clusterName " to " (String/valueOf size)))))
@@ -74,6 +77,21 @@
 
 (defn getClusterCurrentSize [^String connectString ^String clusterName]
   (stringToLong (getClusterStatus connectString clusterName defaultIdealSize getClusterStatusLockKey getClusterCurrentSizeKey)))
+
+(defn setClusterInBootProcess [^String connectString ^String clusterName ^Boolean isInBootProcess]
+  (setClusterStatus connectString clusterName (String/valueOf isInBootProcess) getClusterStatusLockKey getClusterInBootProcessKey
+                    #(log-message (str "set the in boot process of the cluster " clusterName " to " (String/valueOf isInBootProcess)))))
+
+(defn isClusterInBootProcess [^String connectString ^String clusterName]
+  (stringToBoolean (getClusterStatus connectString clusterName defaultIdealSize getClusterStatusLockKey getClusterInBootProcessKey)))
+
+(defn setClusterOutBootProcess [^String connectString ^String clusterName ^Boolean isOutBootProcess]
+  (setClusterStatus connectString clusterName (String/valueOf isOutBootProcess) getClusterStatusLockKey getClusterOutBootProcessKey
+                    #(log-message (str "set the out boot process of the cluster " clusterName " to " (String/valueOf isOutBootProcess)))))
+
+(defn isClusterOutBootProcess [^String connectString ^String clusterName]
+  (stringToBoolean (getClusterStatus connectString clusterName defaultIdealSize getClusterStatusLockKey getClusterOutBootProcessKey)))
+
 
 (defn getClusters [^String connectString]
   (let [client (singleCuratorFramework connectString)]

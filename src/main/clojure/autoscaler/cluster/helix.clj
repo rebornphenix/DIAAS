@@ -70,11 +70,13 @@
 
 (defn setAgentStateOffline ([^String connectString ^String clusterName ^String hostIp] (setAgentStateOffline connectString clusterName hostIp DEFAULT_AGENT_PORT))
   ([^String connectString ^String clusterName ^String hostIp port]
-   (setAgentStateTo connectString clusterName hostIp port false)))
+   (setAgentStateTo connectString clusterName hostIp port false)
+   (setClusterInBootProcess connectString clusterName true)))
 
 (defn setAgentStateOnline ([^String connectString ^String clusterName ^String hostIp] (setAgentStateOnline connectString clusterName hostIp DEFAULT_AGENT_PORT))
   ([^String connectString ^String clusterName ^String hostIp port]
-   (setAgentStateTo connectString clusterName hostIp port true)))
+   (setAgentStateTo connectString clusterName hostIp port true)
+   (setClusterOutBootProcess connectString clusterName true)))
 
 (defn- setClusterStateTo [^String connectString ^String clusterName isOnline]
   (let [admin (ZKHelixAdmin. (pool/zkClient connectString))
@@ -83,18 +85,25 @@
     (log-message (str "set cluster " clusterName " to " (stateToMessage isOnline)))))
 
 (defn setClusterStateOffline [^String connectString ^String clusterName]
-  (setClusterStateTo connectString clusterName false))
+  (setClusterStateTo connectString clusterName false)
+  (setClusterInBootProcess connectString clusterName true))
 
 (defn setClusterStateOnline [^String connectString ^String clusterName]
-  (setClusterStateTo connectString clusterName true))
+  (setClusterStateTo connectString clusterName true)
+  (setClusterOutBootProcess connectString clusterName true))
 
 (defn- viewChangeListener-handleParition [^ExternalView view ^String connectString ^String clusterName ^String partition]
   (let [stateMap (PersistentTreeMap/create (.getStateMap view partition))
-        currentSize (count (filter #(contains? AGENT_NORMAL_STATUS %) (vals stateMap)))]
+        currentSize (count (filter #(contains? AGENT_NORMAL_STATUS %) (vals stateMap)))
+        idealSize (getClusterIdealSize connectString clusterName)]
     (do
       (log-message "start to print the status of agents")
       (dorun (map #(log-message (str (first %) "---" (last %))) stateMap))
       (log-message "finish printing the status of agents")
+      (if (and (== currentSize idealSize) (isClusterOutBootProcess connectString clusterName))
+        (do
+          (setClusterOutBootProcess connectString clusterName false)
+          (setClusterInBootProcess connectString clusterName false)))
       (setClusterCurrentSize connectString clusterName currentSize))))
 
 

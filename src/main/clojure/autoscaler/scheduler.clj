@@ -40,8 +40,9 @@
          (reify Command
            (execute [_]
              (let [idealSize (getClusterIdealSize connectString clusterName)
-                   currentSize (getClusterCurrentSize connectString clusterName)]
-               (if (> idealSize currentSize)
+                   currentSize (getClusterCurrentSize connectString clusterName)
+                   isClusterInBootProcess (isClusterInBootProcess connectString clusterName)]
+               (if (and (not isClusterInBootProcess) (> idealSize currentSize))
                  (newAgentsForCluster connectString clusterName (- idealSize currentSize)))))))))
 
 (defn- handleScaleOut [^String connectString ^String clusterName]

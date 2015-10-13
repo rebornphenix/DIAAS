@@ -12,6 +12,8 @@
 
 (defn getClusterInBootProcessKey [clusterName] (str "/auto_scaling/current_clusters/" clusterName "/in_boot_process"))
 
+(defn getClusterOutBootProcessKey [clusterName] (str "/auto_scaling/current_clusters/" clusterName "/out_boot_process"))
+
 (defn getClusterIdealSizeKey [clusterName] (str "/auto_scaling/current_clusters/" clusterName "/ideal_size"))
 
 (defn getClusterStatusLockKey [clusterName] (str "/auto_scaling/current_clusters/" clusterName "/lock/status"))
