@@ -2,15 +2,19 @@
 
 (defn getCurrentMasterIpKey [clusterName] (str "/auto_scaling/current_clusters/" clusterName "/master_ip"))
 
-(defn getClusterTransitionStatusKey [clusterName] (str "/auto_scaling/current_clusters/" clusterName "/transition_status"))
+(defn getHelixAgentDoneStatusKey [agentIp] (str "/auto_scaling/helix_agent/done_status/" agentIp))
 
-(defn getClusterTransitionStatusLockKey [clusterName] (str "/auto_scaling/current_clusters/" clusterName "/lock/transition_status"))
+(defn getCurrentClustersKey [] "/auto_scaling/current_clusters")
+
+(defn getClusterScaleOutLockKey [clusterName] (str "/auto_scaling/current_clusters/" clusterName "/lock/scale_out"))
+
+(defn getClusterToBeRemovedKey [clusterName] (str "/auto_scaling/current_clusters/" clusterName "/to_be_removed"))
 
 (defn getClusterIdealSizeKey [clusterName] (str "/auto_scaling/current_clusters/" clusterName "/ideal_size"))
 
-(defn getClusterIdealSizeLockKey [clusterName] (str "/auto_scaling/current_clusters/" clusterName "/lock/ideal_size"))
+(defn getClusterStatusLockKey [clusterName] (str "/auto_scaling/current_clusters/" clusterName "/lock/status"))
 
-(def HELIX_STATE_MODEL_REF "ExtendedMasterSlave")
+(defn getClusterCurrentSizeKey [clusterName] (str "/auto_scaling/current_clusters/" clusterName "/current_size"))
 
 (def DEFAULT_HELIX_CLUSTER_PARTITION 1)
 

@@ -1,10 +1,16 @@
 (ns autoscaler.timer
   (:import (java.util.concurrent Executors TimeUnit)))
 
-(defn schedule [^int countOfThread ^Runnable command ^long initialDelay ^long period ^TimeUnit unit]
-  (scheduleAtFixedRate (Executors/newFixedThreadPool countOfThread)
+(defn onceRun [countOfThread ^Runnable command]
+  (.execute (Executors/newFixedThreadPool countOfThread) command))
+
+(defn onceDefaultRun [^Runnable command]
+  (onceRun 1 command))
+
+(defn repeatedRun [countOfThread ^Runnable command initialDelay period ^TimeUnit unit]
+  (.scheduleAtFixedRate (Executors/newScheduledThreadPool countOfThread)
                        command initialDelay period unit))
 
-(defn scheduleWithDefaultSetting [^Runnable command]
-  (schedule 1 command 10 1 (TimeUnit/SECONDS)))
+(defn repeatedDefaultRun [^Runnable command]
+  (repeatedRun 1 command 10 10 (TimeUnit/SECONDS)))
 

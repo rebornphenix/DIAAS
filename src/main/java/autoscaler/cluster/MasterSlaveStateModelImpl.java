@@ -3,6 +3,7 @@ package autoscaler.cluster;
 import org.apache.helix.NotificationContext;
 import org.apache.helix.model.Message;
 import org.apache.helix.participant.statemachine.StateModel;
+import org.apache.helix.participant.statemachine.Transition;
 
 public class MasterSlaveStateModelImpl extends StateModel implements MasterSlaveStateModel {
     private final MasterSlaveStateModel masterSlaveStateModel;
@@ -44,5 +45,18 @@ public class MasterSlaveStateModelImpl extends StateModel implements MasterSlave
     @Override
     public void onBecomeDroppedFromOffline(Message message, NotificationContext context) {
         masterSlaveStateModel.onBecomeDroppedFromOffline(message, context);
+    }
+
+    @Transition(
+            to = "DROPPED",
+            from = "ERROR"
+    )
+    @Override
+    public void onBecomeDroppedFromError(Message message, NotificationContext context){
+        masterSlaveStateModel.onBecomeDroppedFromError(message, context);
+        try {
+            super.onBecomeDroppedFromError(message, context);
+        } catch (Exception e) {
+        }
     }
 }

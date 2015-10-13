@@ -4,19 +4,6 @@
             )
   (:import (org.apache.curator.test TestingServer)))
 
-(deftest try-set-cluster-status-test
-  (testing "Get default value"
-    (let [clusterName "clusterName"
-          connectString (.getConnectString (TestingServer.))]
-      (is (= (getClusterTransitionStatus connectString clusterName) false))))
-  (testing "Get prepopulated value"
-    (let [clusterName "clusterName"
-          connectString (.getConnectString (TestingServer.))
-          value true]
-      (setClusterTransitionStatus connectString clusterName value)
-      (is (= (getClusterTransitionStatus connectString clusterName) value)))))
-
-
 (deftest try-set-cluster-ideal-size-test
   (testing "Get default value"
     (let [clusterName "clusterName"

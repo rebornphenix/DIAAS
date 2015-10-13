@@ -12,16 +12,22 @@
 
 (defprotocol MasterAgentStatus
   (setCurrentMasterIp [this clusterName masterIp])
+  (setMarkDown [this ip])
+  (setMarkHalfWay [this ip])
   (getCurrentMasterIp [this clusterName])
   (deleteMasterIp [this clusterName])
   )
+
+(defn- masterAgentStatus->markDown [^CuratorFramework client ^String ip ^String status]
+  (let [queue (singleSimpleQueue client (getHelixAgentDoneStatusKey ip))]
+    (soffer queue status)))
 
 (defn- masterAgentStatus->getCurrentMasterIp [^CuratorFramework client ^String clusterName]
   (try
     (let [masterIp (getData client (getCurrentMasterIpKey clusterName))]
       (if (.equals masterIp "")
         (do
-          (sleep 100)
+          (sleep 1000)
           (masterAgentStatus->getCurrentMasterIp client clusterName))
         masterIp))
     (catch Exception e
@@ -35,6 +41,10 @@
     MasterAgentStatus
     (setCurrentMasterIp [_ clusterName masterIp]
       (setData client (getCurrentMasterIpKey clusterName) masterIp))
+    (setMarkDown [_ ip]
+      (masterAgentStatus->markDown client ip DONE_STATUS_DONE))
+    (setMarkHalfWay [_ ip]
+      (masterAgentStatus->markDown client ip DONE_STATUS_FAILURE))
     (getCurrentMasterIp [_ clusterName]
       (masterAgentStatus->getCurrentMasterIp client clusterName))
     (deleteMasterIp [_ clusterName]
@@ -46,7 +56,7 @@
 
 
 
-(defn- createExtendedMasterSlaveModel [^String resourceName ^String partitionName ^String instanceName ^String hostIp transDelay masterAgentStatus]
+(defn- createExtendedMasterSlaveModel [^String resourceName ^String partitionName ^String instanceName ^String hostIp transDelay masterAgentStatus addToBeRemovedToCluster]
   (reify MasterSlaveStateModel
     (onBecomeMasterFromOffline [_ message context]
       (let [clusterName (.getClusterName (.getManager context))]
@@ -54,6 +64,7 @@
         (utils/executeCmd "/usr/local/bin/helix_from_offline_to_master.sh" hostIp resourceName)
         (setCurrentMasterIp masterAgentStatus clusterName hostIp)
         (utils/sleep transDelay)
+        (setMarkDown masterAgentStatus hostIp)
         (printTransitionMessage resourceName partitionName instanceName message)
         ))
     (onBecomeSlaveFromOffline [_ message context]
@@ -61,6 +72,7 @@
             masterIp (getCurrentMasterIp masterAgentStatus clusterName)]
         (utils/executeCmd "/usr/local/bin/helix_from_offline_to_slave.sh" masterIp hostIp resourceName)
         (utils/sleep transDelay)
+        (setMarkDown masterAgentStatus hostIp)
         (printTransitionMessage resourceName partitionName instanceName message)
         ))
     (onBecomeMasterFromSlave [_ message context]
@@ -89,17 +101,22 @@
         (utils/sleep transDelay)
         (printTransitionMessage resourceName partitionName instanceName message)
         ))
-    (onBecomeDroppedFromOffline [_ message _]
-      (utils/executeCmd "/usr/local/bin/helix_from_offline_to_dropped.sh" hostIp resourceName)
-      (utils/sleep transDelay)
+    (onBecomeDroppedFromOffline [_ message context]
+      (let [clusterName (.getClusterName (.getManager context))]
+        (addToBeRemovedToCluster clusterName hostIp))
+      (printTransitionMessage resourceName partitionName instanceName message))
+    (onBecomeDroppedFromError [_ message context]
+      (setMarkHalfWay MasterAgentStatus hostIp)
+      (let [clusterName (.getClusterName (.getManager context))]
+        (addToBeRemovedToCluster clusterName hostIp))
       (printTransitionMessage resourceName partitionName instanceName message))
     ))
 
-(defn ^StateModelFactory createStateModelFactory [^CuratorFramework client ^String instanceName ^String hostIp]
+(defn ^StateModelFactory createStateModelFactory [^CuratorFramework client ^String instanceName ^String hostIp addToBeRemovedToCluster]
   (MasterSlaveStateModelFactoryImpl. (reify
                                        MasterSlaveStateModelFactory
                                        (^MasterSlaveStateModel createNewStateModel [_ ^String resourceName ^String partitionName]
-                                         (createExtendedMasterSlaveModel resourceName partitionName instanceName hostIp (long (* 1000 60 1)) (createMasterAgentStatus client))))))
+                                         (createExtendedMasterSlaveModel resourceName partitionName instanceName hostIp (long (* 1000 60 1)) (createMasterAgentStatus client) addToBeRemovedToCluster)))))
 
 (defn ^StateModelDefinition defineStateModel [^String stateModel]
   (let [builder (doto (StateModelDefinition$Builder. stateModel)

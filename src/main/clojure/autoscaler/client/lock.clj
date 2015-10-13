@@ -17,7 +17,7 @@
       (run [this command]
         (try
           (.acquire lock)
-          (log-message (str "accquire the lock for path " path))
+          (log-debug (str "accquire the lock for path " path))
           (catch Exception e
             (log-error e (str "Error to get lock for path " path))
             (utils/sleep 1000)
@@ -25,7 +25,7 @@
         (try (execute command)
              (catch Exception e
                (log-error e (str "Error to run within the lock for path " path)))
-             (finally (try (do (.release lock) (log-message (str "release the lock for path" path)))
+             (finally (try (do (.release lock) (log-debug (str "release the lock for path" path)))
                            (catch Exception e (log-error e (str "Error to release the lock for path " path))))))
         ))))
 

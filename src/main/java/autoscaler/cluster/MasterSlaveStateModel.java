@@ -12,4 +12,5 @@ public interface MasterSlaveStateModel {
     void onBecomeOfflineFromMaster (Message message, NotificationContext context);
     void onBecomeOfflineFromSlave (Message message, NotificationContext context);
     void onBecomeDroppedFromOffline (Message message, NotificationContext context);
+    void onBecomeDroppedFromError (Message message, NotificationContext context);
 }

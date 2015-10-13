@@ -1,6 +1,6 @@
 (ns autoscaler.cluster.helixmultiplecluster
   (:import (org.apache.helix.manager.zk ZKHelixAdmin ZKHelixManager)
-           (org.apache.helix.model BuiltInStateModelDefinitions InstanceConfig IdealState$RebalanceMode)
+           (org.apache.helix.model BuiltInStateModelDefinitions InstanceConfig)
            (org.apache.helix InstanceType)
            (org.apache.helix.participant DistClusterControllerStateModelFactory)
            (org.apache.helix.tools ClusterStateVerifier ClusterStateVerifier$BestPossAndExtViewZkVerifier))
@@ -58,11 +58,15 @@
           (utils/sleep 1000))
         (.addClusterToGrandCluster admin clusterName grandClusterName)
         (.addStateModelDef admin clusterName stateModelRef (model/defineStateModel stateModelRef))
-        (.addResource admin clusterName resourceName partitions stateModelRef (.toString IdealState$RebalanceMode/FULL_AUTO)))
+        (.addResource admin clusterName resourceName partitions stateModelRef))
       (rebalance [_ clusterName rebalanceReplica]
         (do
-          (.rebalance admin clusterName resourceName rebalanceReplica)
-          (setClusterIdealSize connectString clusterName rebalanceReplica))))))
+          (let [currentSize (getClusterCurrentSize connectString clusterName)]
+            (if (< rebalanceReplica currentSize)
+              (do
+                (.rebalance admin clusterName resourceName rebalanceReplica)
+                (sleep 10000)))
+            (setClusterIdealSize connectString clusterName rebalanceReplica)))))))
 
 (def singleHelixManager (memoize createHelixManager))
 
