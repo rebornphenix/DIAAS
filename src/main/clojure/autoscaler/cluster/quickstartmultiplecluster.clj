@@ -18,8 +18,6 @@
         clusterName DEFAULT_TEST_HELIX_CLUSTER_NAME]
     (init manager clusterName)
     (singleHelixAdministrator connectString resoureName clusterName "192.168.1.130")
-    (doto manager
-      (rebalance clusterName 4))
     (singleHelixAgent client connectString clusterName "192.168.1.120")
     (utils/sleep 1000)
     (singleHelixAgent client connectString clusterName "192.168.1.121")
@@ -27,6 +25,8 @@
     (singleHelixAgent client connectString clusterName "192.168.1.122")
     (utils/sleep 1000)
     (singleHelixAgent client connectString clusterName "192.168.1.123")
+    (doto manager
+      (rebalance clusterName 4))
     (utils/sleep 90000)
     (setAgentStateOffline connectString clusterName "192.168.1.121")
     (utils/sleep 90000)

@@ -6,6 +6,7 @@
            (org.apache.helix.tools ClusterStateVerifier ClusterStateVerifier$BestPossAndExtViewZkVerifier))
   (:use [autoscaler.keys]
         [autoscaler.cluster.zkclientpool :as pool]
+        [autoscaler.cluster.status]
         [autoscaler.cluster.helix]
         [autoscaler.cluster.model :as model]
         [autoscaler.utils :as utils]

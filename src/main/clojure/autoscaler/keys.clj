@@ -10,6 +10,8 @@
 
 (defn getClusterToBeRemovedKey [clusterName] (str "/auto_scaling/current_clusters/" clusterName "/to_be_removed"))
 
+(defn getClusterInBootProcessKey [clusterName] (str "/auto_scaling/current_clusters/" clusterName "/in_boot_process"))
+
 (defn getClusterIdealSizeKey [clusterName] (str "/auto_scaling/current_clusters/" clusterName "/ideal_size"))
 
 (defn getClusterStatusLockKey [clusterName] (str "/auto_scaling/current_clusters/" clusterName "/lock/status"))

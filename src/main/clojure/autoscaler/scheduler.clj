@@ -2,13 +2,13 @@
   (:require
     [clojure.set :refer [difference]]
     [autoscaler.timer :as timer]
-    [autoscaler.cluster.helix :refer [getClusters getClusterIdealSize getClusterCurrentSize]]
     [autoscaler.utils :refer [sleep]])
   (:use
     [autoscaler.keys]
-    [autoscaler.client.lock :as lock]
+    [autoscaler.client.lock]
     [autoscaler.client.client]
     [autoscaler.log]
+    [autoscaler.cluster.status]
     [autoscaler.cluster.helix]
     [autoscaler.client.simplequeue]
     ))
@@ -35,8 +35,7 @@
         (map #(waitForStatus connectString %) ips)))))
 
 (defn- scaleOutCluster [^String connectString ^String clusterName]
-  (let [client (singleCuratorFramework connectString)
-        lock (lock/singleLock client (getClusterScaleOutLockKey clusterName))]
+  (let [lock (createClusterLockFor connectString clusterName getClusterScaleOutLockKey)]
     (run lock
          (reify Command
            (execute [_]
